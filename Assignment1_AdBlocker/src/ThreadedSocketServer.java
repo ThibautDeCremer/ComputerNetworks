@@ -43,7 +43,7 @@ public class ThreadedSocketServer implements Runnable{
                     "Error accepting client connection", e);
             }
             new Thread(
-                new WorkerRunnable(
+                new HTTPRequestHandler(
                     clientSocket, "Multithreaded Server")
             ).start();
         }
