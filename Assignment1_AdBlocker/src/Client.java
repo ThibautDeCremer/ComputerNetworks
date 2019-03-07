@@ -6,13 +6,15 @@
 
 import java.net.*;
 import java.util.Scanner;
+
+import javax.imageio.ImageIO;
+
+import java.awt.image.BufferedImage;
 import java.io.*;
 
 /**
  * to do:
  * 	- store HTML locally and store found image files locally -> how?
- *	- scan HTML file and check for embedded objects
- *		-> use GET command for found embedded objects (only retrieve image files, store them locally) 
  */
 
 public class Client
@@ -70,13 +72,6 @@ public class Client
 			incomming = incomming.replace("null", "");
 			processImages(imagefiles);
 			System.out.println(incomming);
-//			BufferedReader br = new BufferedReader(new InputStreamReader(sock.getInputStream()));
-//			String t;
-//			while((t = br.readLine()) != null)
-//			{
-//				System.out.println(t);
-//				Attribute[] images = scanImages(t); // HELP
-//			}
 			br.close();
 			sock.close();
 			System.out.println("Done"); // needed to see whether or not the program is still running
@@ -149,8 +144,10 @@ public class Client
 	 * 
 	 * @param allImages
 	 * 		String containing all HTML lines that reference images.
+	 * @throws IOException 
+	 * @throws UnknownHostException 
 	 */
-	private static void processImages(String allImages)
+	private static void processImages(String allImages) throws UnknownHostException, IOException
 	{
 		int index = allImages.indexOf("<img ", 0); // function returns -1 if no index can be found
 		
@@ -160,6 +157,14 @@ public class Client
 			int endIndex = allImages.indexOf("\"", beginIndex); // index where image reference ends
 			String image = allImages.substring(beginIndex, endIndex);
 			// GET operation to retrieve the image and store it locally -> perhaps use same function as in the main
+			Socket s = new Socket(InetAddress.getByName(image),80);
+			PrintWriter pr = new PrintWriter(s.getOutputStream(),true);
+			pr.println("GET / HTTP/1.1");
+			pr.println("Host: " + image);
+			pr.println("Connection: Close");
+			pr.println();
+			BufferedImage img = ImageIO.read(s.getInputStream()); // now need to store this
+			
 			index = allImages.indexOf("<img ", endIndex);
 		}
 	}
