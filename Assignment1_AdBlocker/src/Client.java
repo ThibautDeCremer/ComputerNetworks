@@ -6,15 +6,11 @@
 
 import java.net.*;
 import java.util.Scanner;
-
-import javax.swing.text.html.HTML;
-import javax.swing.text.html.HTML.Attribute;
-
 import java.io.*;
 
 /**
  * to do:
- * 	- store HTML locally -> how?
+ * 	- store HTML locally and store found image files locally -> how?
  *	- scan HTML file and check for embedded objects
  *		-> use GET command for found embedded objects (only retrieve image files, store them locally) 
  */
@@ -41,7 +37,6 @@ public class Client
 		
 		if ((args[0].equals("GET")) || (args[0].equals("HEAD")))
 		{
-			String incomming = "";
 			Socket sock = new Socket(InetAddress.getByName(args[1]),80); // open socket with default port 80
 			PrintWriter pw = new PrintWriter(sock.getOutputStream(),true);
 			BufferedReader br = new BufferedReader(new InputStreamReader(sock.getInputStream()));
@@ -50,13 +45,17 @@ public class Client
 			pw.println("Connection: Close"); // close connection after making request
 			pw.println(); // always end with blank line
 			Boolean connectionLength = false;
-			String t = br.readLine();
+			String imagefiles = "";
+			String incomming = br.readLine() + "\r\n";
+			if (scanImages(incomming))
+				imagefiles = imagefiles + incomming + "\r\n";
 			while(! connectionLength)
 			{
 				pw.println(args[0] +  " / HTTP/1.1"); // as specified in the assignment, client program should support HTTP version 1.1
 				pw.println("Host: " + args[1]);
 				String r;
 				r = br.readLine();
+				incomming = incomming + r + "\r\n";
 				if (r.contains("Content-Length") || (r == null))
 					connectionLength = true;
 				while(r != null)
@@ -69,6 +68,7 @@ public class Client
 				}
 			}
 			incomming = incomming.replace("null", "");
+			processImages(imagefiles);
 			System.out.println(incomming);
 //			BufferedReader br = new BufferedReader(new InputStreamReader(sock.getInputStream()));
 //			String t;
@@ -91,8 +91,8 @@ public class Client
 			while (bool)
 			{
 				System.out.println("Enter something to upload in server: ");
-				Scanner sc = new Scanner(System.in);
-				String input = sc.nextLine();
+				Scanner scanner = new Scanner(System.in);
+				String input = scanner.nextLine();
 				String write = URLEncoder.encode(input,"UTF-8");
 				wr.write(args[0] + " / HTTP/1.1\r\n");
 				wr.write("Content-Length: " + input.length());
@@ -110,6 +110,7 @@ public class Client
 				}
 				
 				br.close();
+				scanner.close();
 				
 				if (input.equals(""))
 					bool = false;
@@ -129,13 +130,37 @@ public class Client
 	}
 	
 	/**
-	 * Method to scan the HTML file for image files. Image files have following HTML attributes: ismap, poster, usemap
+	 * Method to scan the HTML file for image files. Method scans for images using string scanner.
+	 * 
+	 * @param t
+	 * 		HTML string to check for image files.
 	 */
-	private static Attribute[] scanImages(String t)
-	{
-		Attribute[] result = null;
+	private static boolean scanImages(String t)
+	{		
+		if (t == null)
+			return false;
 
-		Attribute[] allAttributes = HTML.getAllAttributeKeys();
-		return result;
+		else
+			return t.contains("<img ");
+	}
+	
+	/**
+	 * Method to deal with  all images in the HTML file.
+	 * 
+	 * @param allImages
+	 * 		String containing all HTML lines that reference images.
+	 */
+	private static void processImages(String allImages)
+	{
+		int index = allImages.indexOf("<img ", 0); // function returns -1 if no index can be found
+		
+		while(index != -1)
+		{
+			int beginIndex = allImages.indexOf("src=", index)+5; // index where image reference starts
+			int endIndex = allImages.indexOf("\"", beginIndex); // index where image reference ends
+			String image = allImages.substring(beginIndex, endIndex);
+			// GET operation to retrieve the image and store it locally -> perhaps use same function as in the main
+			index = allImages.indexOf("<img ", endIndex);
+		}
 	}
 }
