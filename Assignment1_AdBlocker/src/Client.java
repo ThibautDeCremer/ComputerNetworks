@@ -15,7 +15,7 @@ import java.io.*;
 /**
  * to do:
  * 	- store HTML locally -> how?
- * 	- handle both types of responds from HTTP server
+ * 	- handle both types of responds from HTTP server (more or less ok)
  *	- scan HTML file and check for embedded objects
  *		-> use GET command for found embedded objects (only retrieve image files, store them locally) 
  */
@@ -42,19 +42,42 @@ public class Client
 		
 		if ((args[0].equals("GET")) || (args[0].equals("HEAD")))
 		{
+			String incomming = "";
 			Socket sock = new Socket(InetAddress.getByName(args[1]),80); // open socket with default port 80
 			PrintWriter pw = new PrintWriter(sock.getOutputStream(),true);
+			BufferedReader br = new BufferedReader(new InputStreamReader(sock.getInputStream()));
 			pw.println(args[0] +  " / HTTP/1.1"); // as specified in the assignment, client program should support HTTP version 1.1
 			pw.println("Host: " + args[1]);
 			pw.println("Connection: Close"); // close connection after making request
 			pw.println(); // always end with blank line
-			BufferedReader br = new BufferedReader(new InputStreamReader(sock.getInputStream()));
-			String t;
-			while((t = br.readLine()) != null)
+			Boolean connectionLength = false;
+			String t = br.readLine();
+			while(! connectionLength)
 			{
-				System.out.println(t);
-				Attribute[] images = scanImages(t); // HELP
+				pw.println(args[0] +  " / HTTP/1.1"); // as specified in the assignment, client program should support HTTP version 1.1
+				pw.println("Host: " + args[1]);
+				String r;
+				r = br.readLine();
+				if (r.contains("Content-Length") || (r == null))
+					connectionLength = true;
+				while(r != null)
+				{
+					r = br.readLine();
+					incomming+= r + "\r\n";
+					if ((r == null)|| r.contains("Content-Length"))
+						connectionLength = true;
+
+				}
 			}
+			incomming = incomming.replace("null", "");
+			System.out.println(incomming);
+//			BufferedReader br = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+//			String t;
+//			while((t = br.readLine()) != null)
+//			{
+//				System.out.println(t);
+//				Attribute[] images = scanImages(t); // HELP
+//			}
 			br.close();
 			sock.close();
 			System.out.println("Done"); // needed to see whether or not the program is still running
