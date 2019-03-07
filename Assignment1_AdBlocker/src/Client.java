@@ -15,7 +15,6 @@ import java.io.*;
 /**
  * to do:
  * 	- store HTML locally -> how?
- * 	- handle both types of responds from HTTP server (more or less ok)
  *	- scan HTML file and check for embedded objects
  *		-> use GET command for found embedded objects (only retrieve image files, store them locally) 
  */
