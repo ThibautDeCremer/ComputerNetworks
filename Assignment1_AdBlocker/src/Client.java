@@ -15,7 +15,7 @@ import java.io.*;
  * 	- GET image in processImages ok?
  * 	- store HTML locally and store found image files locally -> how?
  * 	- is ad blocker correct? (the implementation is a bit naive)
- * 	- I have not yet tested the PUT and POST funtions
+ * 	- I have not yet tested the PUT and POST functions
  */
 
 public class Client
