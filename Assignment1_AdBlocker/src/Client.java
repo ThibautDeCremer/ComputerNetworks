@@ -48,10 +48,8 @@ public class Client
 			pw.println("Connection: Close"); // close connection after making request
 			pw.println(); // always end with blank line
 			Boolean connectionLength = false;
-			String imagefiles = "";
 			String incomming = br.readLine() + "\r\n";
-			if (scanImages(incomming))
-				imagefiles = imagefiles + incomming + "\r\n";
+			
 			while(! connectionLength)
 			{
 				pw.println(args[0] +  " / HTTP/1.1"); // as specified in the assignment, client program should support HTTP version 1.1
@@ -59,8 +57,10 @@ public class Client
 				String r;
 				r = br.readLine();
 				incomming = incomming + r + "\r\n";
+				
 				if (r.contains("Content-Length") || (r == null))
 					connectionLength = true;
+				
 				while(r != null)
 				{
 					r = br.readLine();
@@ -70,8 +70,12 @@ public class Client
 
 				}
 			}
+			
 			incomming = incomming.replace("null", "");
-			processImages(imagefiles);
+			
+			if (scanImages(incomming))
+				processImages(incomming);
+			
 			System.out.println(incomming);
 			br.close();
 			sock.close();
@@ -148,7 +152,7 @@ public class Client
 	 * @throws IOException 
 	 * @throws UnknownHostException 
 	 */
-	private static void processImages(String allImages) throws UnknownHostException, IOException
+	private static String processImages(String allImages) throws UnknownHostException, IOException
 	{
 		int index = allImages.indexOf("<img ", 0); // function returns -1 if no index can be found
 		
@@ -158,7 +162,10 @@ public class Client
 			int endIndex = allImages.indexOf("\"", beginIndex); // index where image reference ends
 			String image = allImages.substring(beginIndex, endIndex);
 			if (image.contains("ad")) // if the found embedded image is an add, replace it with something else.
+			{
 				image = "ReplacementPicture.png";
+				allImages.replace(allImages.substring(beginIndex, endIndex),image);
+			}
 			// GET operation to retrieve the image and store it locally -> perhaps use same function as in the main
 			Socket s = new Socket(InetAddress.getByName(image),80);
 			PrintWriter pr = new PrintWriter(s.getOutputStream(),true);
@@ -171,5 +178,7 @@ public class Client
 			
 			index = allImages.indexOf("<img ", endIndex);
 		}
+		
+		return allImages;
 	}
 }
