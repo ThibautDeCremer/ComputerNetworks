@@ -74,7 +74,7 @@ public class Client
 			incomming = incomming.replace("null", "");
 			
 			if (scanImages(incomming))
-				processImages(incomming);
+				incomming = processImages(incomming);
 			
 			System.out.println(incomming);
 			br.close();
