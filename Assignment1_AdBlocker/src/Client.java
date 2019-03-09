@@ -1,20 +1,20 @@
 /**
- * Client program for a HTTP client-server application.
+ * Client program for a HTTP client-server application, this program has ad blocker functionalities.
  * 
  * @author Thibaut De Cremer and Niels Verdijck
  */
 
 import java.net.*;
 import java.util.Scanner;
-
 import javax.imageio.ImageIO;
-
 import java.awt.image.BufferedImage;
 import java.io.*;
 
 /**
  * to do:
+ * 	- GET image in processImages ok?
  * 	- store HTML locally and store found image files locally -> how?
+ * 	- is ad blocker correct? (the implementation is a bit naive)
  */
 
 public class Client
@@ -140,7 +140,7 @@ public class Client
 	}
 	
 	/**
-	 * Method to deal with  all images in the HTML file.
+	 * Method to deal with  all images in the HTML file. This method also implements the ad block.
 	 * 
 	 * @param allImages
 	 * 		String containing all HTML lines that reference images.
@@ -156,6 +156,8 @@ public class Client
 			int beginIndex = allImages.indexOf("src=", index)+5; // index where image reference starts
 			int endIndex = allImages.indexOf("\"", beginIndex); // index where image reference ends
 			String image = allImages.substring(beginIndex, endIndex);
+			if (image.contains("ad")) // if the found embedded image is an add, replace it with something else.
+				image = "ReplacementPicture.png";
 			// GET operation to retrieve the image and store it locally -> perhaps use same function as in the main
 			Socket s = new Socket(InetAddress.getByName(image),80);
 			PrintWriter pr = new PrintWriter(s.getOutputStream(),true);
@@ -164,6 +166,7 @@ public class Client
 			pr.println("Connection: Close");
 			pr.println();
 			BufferedImage img = ImageIO.read(s.getInputStream()); // now need to store this
+			s.close();
 			
 			index = allImages.indexOf("<img ", endIndex);
 		}
