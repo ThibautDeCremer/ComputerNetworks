@@ -10,12 +10,13 @@ public class HTTPRequestHandler implements Runnable{
 
     protected Socket clientSocket = null;
     protected String serverText   = null;
+    protected String notImplemented = "501 Not Implemented";
 
     public HTTPRequestHandler(Socket clientSocket, String serverText) {
         this.clientSocket = clientSocket;
         this.serverText   = serverText;
     }
-
+    
     public void run(){
         try {
             BufferedReader input  = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
@@ -24,24 +25,32 @@ public class HTTPRequestHandler implements Runnable{
             //String message = (String) input.readObject();
             try {
 				Map<String, String> parsedRequest = this.ParseRequestWithReader(input);
-				String[] response = {"test","test"}; //has 2 elements [0]=headers+response code | [1]=body
-				if (parsedRequest.keySet().contains("if-modified-since")) response= this.handleIfModifiedSince(parsedRequest);
+				String[] response = {"",""}; //has 2 elements [0]=headers+response code | [1]=body
+				if (parsedRequest.keySet().contains("if-modified-since")) response=this.handleIfModifiedSince(parsedRequest);
 				switch (parsedRequest.get("type")) {
 					case "GET": response = this.GET(parsedRequest);
+							break;
 					case "HEAD": response = this.HEAD(parsedRequest);
+							break;
 					case "PUT": response = this.PUT(parsedRequest);
+							break;
 					case "POST": response = this.POST(parsedRequest);
+							break;
+					default: response[0] = this.notImplemented;
+							break;
 				}
-				// 501 not implemented
-				
+				boolean closeSocket = true;
 				//implement not closing on Connection: keep-alive
-				if (parsedRequest.get("Connection")=="Close") {
-					response[0]+="Connection: Closed";
-					//close connection		
+				if (parsedRequest.get("Connection").equals("Keep-Alive")) {
+					closeSocket = false;
 				} else {
-					//keep connection open
-				}
-					
+					response[0]+="Connection: Closed";
+				} 
+				output.write((response[0]+response[1]).getBytes());
+				output.close();
+ 	            input.close();
+ 	            System.out.println(closeSocket);
+ 	            if (closeSocket) {this.clientSocket.close();};
 			} catch (WrongRequestException e) {
 				if (e.getReason()=="invalid Request Format") {
 					String body = "<!DOCTYPE HTML PUBLIC \"-//IETF//DTD HTML 2.0//EN\"><html><head><title>400 Bad Request</title></head><body><h1>Bad Request</h1></body></html>";
@@ -64,21 +73,35 @@ public class HTTPRequestHandler implements Runnable{
 	 						+ "Content-Length: "+ Integer.toString(body.length())
 	 						+ "Content-Type: text/html; charset=iso-8859-1"
 	 						+ "Connection: Closed").getBytes());
+	 				output.close();
+	 	            input.close();
+	 	            this.clientSocket.close();
 				}
 			}
-            output.write(("HTTP/1.1 200 OK\n\nWorkerRunnable: " +
-            		this.serverText + " - " + time + "").getBytes());
-            output.close();
-            input.close();
             System.out.println("Request processed: " + time);
         } catch (IOException | ParseException/**| ClassNotFoundException*/ e) {
             //This is the 500 response code
         }
     }
 
-	private String[] POST(Map<String, String> parsedRequest) {
-		
-		
+	private String[] POST(Map<String, String> parsedRequest) throws WrongRequestException, IOException {
+		String path = parsedRequest.get("path");
+		String fileName = this.determineNewfileName(path);
+		String content = parsedRequest.get("body");
+		String[] response = {"",""};
+		if (this.FileExists(fileName)) {
+			this.appendToFile(fileName, content);
+			response[0] = "HTTP/1.1 200 OK \r\n"
+					+ this.getDateHeader() + "\r\n"
+					+ "Content-Location: " + path + fileName + "\r\n";
+		} else {
+			this.createNewFile(fileName, content);
+			response[0] = "HTTP/1.1 201 Created \r\n"
+					+ this.getDateHeader() + "\r\n"
+					+ "Content-Location: " + path + fileName + "\r\n";
+		}
+		response[1] = "\r\n";
+		return response;
 	}
 
 	/**
@@ -184,15 +207,19 @@ public class HTTPRequestHandler implements Runnable{
 	}
 
 	private String[] GET(Map<String, String> parsedRequest) throws WrongRequestException, IOException {
+		System.out.println("Starting GET");
 		String path = parsedRequest.get("path");
-		if (path=="\\") path="\\index.html";
+		if (path.equals("\\")
+				|| path.equals("/")) path="index.html";
+		System.out.println(this.isValidPath(path));
 		if (!this.isValidPath(path)) throw new WrongRequestException("404 not found");
 		String[] response = {"",""};
+		System.out.println(path);
 		StringBuilder contentBuilder = new StringBuilder();
-		BufferedReader in = new BufferedReader(new FileReader(path));
+		BufferedReader in = new BufferedReader(new FileReader(new File(System.getProperty("user.dir"),path)));
 	    String str;
 	    while ((str = in.readLine()) != null) {
-	        contentBuilder.append(str);
+	    	contentBuilder.append(str);
 	    }
 	    in.close();
 		String content = contentBuilder.toString();
@@ -203,12 +230,12 @@ public class HTTPRequestHandler implements Runnable{
 						+ "Content-Type: text/html \r\n";
 		response[1] = "\r\n"
 						+ content;
+		System.out.println(Arrays.toString(response));
 		return response;
-		
 	}
 
 	private String getLastModifiedHeader(String path) {
-		File fileAtPath = new File(path);
+		File fileAtPath = new File(System.getProperty("user.dir"),path);
 		SimpleDateFormat sdf=new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss");
 		String header = sdf.format(fileAtPath.lastModified());
 		return header;
@@ -251,7 +278,8 @@ public class HTTPRequestHandler implements Runnable{
 	}
 
 	public Map<String,String> ParseRequestWithReader(BufferedReader reader) throws IOException, WrongRequestException{
-    	Map<String, String> map = new HashMap<String, String>();
+    	System.out.println("commencing parser");
+		Map<String, String> map = new HashMap<String, String>();
     	String currLine = reader.readLine();
     	String[] currCommand = currLine.split("\\s+");
     	if (currCommand.length!=3
@@ -260,35 +288,43 @@ public class HTTPRequestHandler implements Runnable{
     	map.put("type", currCommand[0]);
     	map.put("path", currCommand[1]);
     	map.put("version", currCommand[2]);
-    	String t=null;
-    	while((t = reader.readLine()) != "");
+    	String t=reader.readLine();
+    	while(!t.equals("")) {
     		String[] temp = t.split(":");
     		map.put(temp[0].trim(), temp[1].trim());
+    		t = reader.readLine();
+    	}
     	if (!map.keySet().contains("Host")) throw new WrongRequestException("invalid Request Format");
-    	String body = "";
-    	while((t = reader.readLine()) != null) body+=t+"\r\n";
-    	map.put("body", body);
+    	if (! (map.get("type").equals("GET")
+    			|| map.get("type").equals("HEAD"))) {
+    		String body = "";
+        	System.out.println("test");
+        	System.out.println(reader.readLine());
+        	System.out.println("test");
+        	while((t = reader.readLine()) != null) body+=t+"\r\n";
+        	map.put("body", body);
+    	}
+    	System.out.println(map.toString());
     	return map;
     }
     
     private boolean isValidVersion(String version) {
-		String[] temp=version.split("/");
-		String[] ver=temp[1].split(".");
-    	return temp[0]=="HTTP"
-    			&& ver[0]=="1"
-    			&& (ver[1]=="1" || ver[1]=="0");
+    	String[] temp=version.split("/");	
+    	return temp[0].equals("HTTP")
+    			&& (temp[1].equals("1.1")||temp[1].equals("1.0"));
 	}
 
 	private boolean isValidPath(String path) {
-    	File tmpDir = new File(path);
-    	return tmpDir.exists();
+    	File tmpDir = new File(System.getProperty("user.dir"),path);
+    	return tmpDir.exists()
+    			|| path=="/";
 	}
 
 	private boolean isValidMethod(String method) {
-		return method=="GET"
-				|| method=="HEAD"
-				|| method=="POST"
-				|| method=="PUT";
+		return method.equals("GET")
+				|| method.equals("HEAD")
+				|| method.equals("POST")
+				|| method.equals("PUT");
 	}
 
 	public Map<String,String> ParseRequest(String HTTPRequest){

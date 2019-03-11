@@ -9,6 +9,7 @@ public class ThreadedSocketServer implements Runnable{
     protected Thread       runningThread= null;
 
     public static void main(String[] args) {
+    System.out.println("starting server...");
     ThreadedSocketServer server = new ThreadedSocketServer(9000);
     new Thread(server).start();
 
@@ -36,16 +37,16 @@ public class ThreadedSocketServer implements Runnable{
                 clientSocket = this.serverSocket.accept();
             } catch (IOException e) {
                 if(isStopped()) {
-                    System.out.println("Server Stopped.") ;
+                    System.out.println("Server Stopped due to IO Exception.") ;
+                    e.printStackTrace();
                     return;
                 }
                 throw new RuntimeException(
                     "Error accepting client connection", e);
             }
             new Thread(
-                new HTTPRequestHandler(
-                    clientSocket, "Multithreaded Server")
-            ).start();
+                new HTTPRequestHandler(clientSocket, "Multithreaded Server"))
+            		.start();
         }
         System.out.println("Server Stopped.") ;
     }
