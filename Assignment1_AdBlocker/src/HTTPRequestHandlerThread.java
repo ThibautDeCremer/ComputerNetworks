@@ -27,7 +27,6 @@ class HTTPRequestHandlerThread extends Thread {
 	  Socket clientSocket;
 	  int clientID = -1;
 	  boolean running = true;
-	  protected String notImplemented = "501 Not Implemented\r\n\r\n";
 
 	  HTTPRequestHandlerThread(Socket s, int i) {
 	    clientSocket = s;
@@ -58,7 +57,8 @@ class HTTPRequestHandlerThread extends Thread {
 							break;
 					case "POST": responseBytes = this.POSTbytes(parsedRequest);
 							break;
-					default: responseBytes.put("headers", this.notImplemented.getBytes());
+					default: responseBytes.put("headers", "501 Not Implemented\r\n\r\n".getBytes());
+							 responseBytes.put("body", null);
 							break;
 				}
 				boolean closeSocket = true;
