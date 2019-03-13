@@ -10,7 +10,7 @@ public class MainServer {
 	public static void main(String[] args) throws Exception {
 	
 	System.out.println("Running Server");
-	ServerSocket m_ServerSocket = new ServerSocket(5111);
+	ServerSocket m_ServerSocket = new ServerSocket(6111);
     int id = 0;
     
     try {
