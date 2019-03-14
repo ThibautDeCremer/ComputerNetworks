@@ -11,7 +11,7 @@ import java.io.*;
 /**
  * TODO:
  * 	- GET image in processImages ok?
- * 	- store HTML locally and store found image files locally -> how?
+ * 	- store found image files locally -> it works but, image don't show when I try to open them from where they are stored
  * 	- I have not yet tested the PUT and POST functions
  */
 
@@ -222,7 +222,7 @@ public class Client
 				html = processImages(html, host, path, sock);
 			}
 			
-			FileWriter fw = new FileWriter("AdBlock.html");
+			FileWriter fw = new FileWriter("AdBlock.html"); // write to file
 			BufferedWriter bw = new BufferedWriter(fw);
 			try
 			{
@@ -359,18 +359,21 @@ public class Client
 			pr.println("Connection: Keep-Alive");
 			pr.println();
 			
-			DataInputStream in = new DataInputStream(socket.getInputStream());
+			/*DataInputStream in = new DataInputStream(socket.getInputStream());
 			int len = in.readInt(); // length of the incoming image
 			byte[] im = new byte[len];
 			if (len > 0)
 			{
 				in.readFully(im,0,im.length); // read the entire image
-			}
-			try (FileOutputStream fos = new FileOutputStream("pathname")) // TODO: replace pathname
+			}*/
+			
+			InputStream is = socket.getInputStream(); // TODO: as long as the image is not to large, this works hopefully
+			byte[] im = is.readAllBytes();
+						
+			try (FileOutputStream fos = new FileOutputStream(image))
 			{
 				 fos.write(im);
 			}
-			// not allowed : BufferedImage img = ImageIO.read(socket.getInputStream());
 			
 			index = allImages.indexOf("<img ", endIndex);
 		}
