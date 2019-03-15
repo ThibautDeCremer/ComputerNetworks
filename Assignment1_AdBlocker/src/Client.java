@@ -1,18 +1,21 @@
 /**
- * Client program for a HTTP client-server application, this program has ad blocker functionalities.
+ * Client program for a HTTP client-server application, this program has primitive ad blocker functionalities.
  * 
  * @author Thibaut De Cremer and Niels Verdijck
  */
 
 import java.net.*;
+import java.nio.ByteBuffer;
 import java.util.Scanner;
 import java.io.*;
 
 /**
  * TODO:
- * 	- GET image in processImages ok?
- * 	- store found image files locally -> it works but, image don't show when I try to open them from where they are stored
- * 	- I have not yet tested the PUT and POST functions
+ * 	- GET image in processImages ok? Images that I try to read do not exist (empty bytes).
+ * 	- -> store found image files locally -> it works but, image don't show when I try to open them from where they are stored
+ * 	- I have not yet tested the PUT and POST functions (how to make request to server?)
+ * 
+ * 	TODO: test of je de afbeeldingen zo kan ophalen met een GET request!!
  */
 
 public class Client
@@ -35,6 +38,9 @@ public class Client
 			return;
 		}
 		
+		/**
+		 * part of the method that deals with HEAD requests. (WORKS)
+		 */
 		if (args[0].equals("HEAD"))
 		{
 			String host = null;
@@ -58,7 +64,8 @@ public class Client
 			pw.println("Host: " + host);
 			pw.println("Connection: Close"); // close connection after making request
 			pw.println(); // always end with blank line
-			BufferedReader br = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+			InputStream inSt = sock.getInputStream();
+			BufferedReader br = new BufferedReader(new InputStreamReader(inSt));
 			String incoming = "";
 			String r = br.readLine() + "\r\n";
 			incoming += r;
@@ -75,6 +82,9 @@ public class Client
 			System.out.println("Done");
 		}
 		
+		/**
+		 * Part of the method that deals with GET requests. (WORKS hopefully for all sites) -> TODO: test met verschillende sites
+		 */
 		else if (args[0].equals("GET"))
 		{
 			String host = null;
@@ -99,13 +109,17 @@ public class Client
 			pw.println("Connection: Keep-Alive"); // keep connection alive after making request
 			pw.println(); // always end with blank line
 			
+			/**
+			 * This is part is not useful anymore, should be deleted if all tests are successful.
+			 */
 			/*// test
 			InputStream so = sock.getInputStream();
 			byte[] b = new byte[4000];
 			int i = so.read(b);
 			// test*/
 			
-			BufferedReader br = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+			InputStream inSt = sock.getInputStream();
+			BufferedReader br = new BufferedReader(new InputStreamReader(inSt));
 			String header = "";
 			String r = br.readLine() + "\r\n";
 			header += r;
@@ -119,6 +133,9 @@ public class Client
 			System.out.println(header);
 			String html = "";
 			
+			/**
+			 * GET requests that sends its data with content-length
+			 */
 			if (header.contains("Content-Length"))
 			{
 				String ConLen = "Content-Length";
@@ -132,10 +149,10 @@ public class Client
 				{
 					String t = br.readLine();
 					
-					if (t == null) // TODO: check why final print of test does not equal content-length, last <html> tag is printed (de-cremer.be/webpage/)
-						break; // test with example.com not successful, test is at most 1220 in stead of 1270
+					if (t == null)
+						break;
 					
-					test += t.length();
+					test += t.length()+1;
 					System.out.println(test);
 					html = html + t + "\r\n";
 					//leng -= (t.length()+2); // \r\n is only 2 characters
@@ -143,43 +160,34 @@ public class Client
 				System.out.println(test);
 			}
 			
+			/**
+			 * GET request that sends its data in chunks.
+			 */
 			else if (header.contains("chunked"))
 			{
-				/*String h = br.readLine(); // NOT GOOD, to simple
-				html += h + "\r\n";
-				System.out.println(html.length());
-				System.out.println(h);
-				
-				while(h != "0")
-				{
-					h = br.readLine();
-					html += h + "\r\n";
-					System.out.println(html.length());
-					System.out.println(h);
-				}*/
-				
-				
 				String h = br.readLine();
-				System.out.println(h);
+				//System.out.println(h);
 				int counter = Integer.parseInt(h,16);
-				System.out.println(counter);
-				Boolean fullTransfer = false;
-				
+				//System.out.println(counter);
+				Boolean fullTransfer = false; // check whether or not there has been a full transfer of data.
+				char[] cbuf = new char[1] ;
 				while(!fullTransfer)
 				{
-					while(counter >= -1)
+					while(counter > 0)
 					{
-						String s = br.readLine();
-						System.out.println(s);
-						html += s;
-						counter -= (s.length()+2);
-						System.out.println(counter);
-						if (counter > 0)
-							html += "\r\n";
-						System.out.println(html.length());
+						//String s = br.readLine();
+						br.read(cbuf, 0, 1);
+						System.out.print(Character.toString(cbuf[0]));
+						html += Character.toString(cbuf[0]);
+						counter --;
+						//System.out.println(counter);
+						//if (counter > 0)
+							//html += "\r\n";
+						//System.out.println(html.length());
 					}
 					
 					String k = br.readLine();
+					k = br.readLine();
 					System.out.println(k);
 					counter = Integer.parseInt(k,16);
 					if (counter == 0)
@@ -196,26 +204,7 @@ public class Client
 				System.out.println("Done");
 			}
 			
-			/*while(! connectionLength)
-			{
-				pw.println(args[0] +  " / HTTP/1.1"); // as specified in the assignment, client program should support HTTP version 1.1
-				pw.println("Host: " + args[1]);
-				String r;
-				r = br.readLine();
-				incoming = incoming + r + "\r\n";
-								
-				while(r.equals("")) // parse header
-				{
-					r = br.readLine();
-					incoming+= r + "\r\n";
-					if ((r == null)|| r.contains("Content-Length"))
-						connectionLength = true;
-				}
-				
-				if (incoming.contains("Content-Length") || (r == null))
-					connectionLength = true;
-
-			}*/
+			br.close();
 			
 			if (scanImages(html))
 			{
@@ -236,7 +225,6 @@ public class Client
 			}
 			
 			System.out.println(html);
-			br.close();
 			sock.close();
 			System.out.println("Done"); // needed to see whether or not the program is still running
 			return;
@@ -259,7 +247,7 @@ public class Client
 			else
 				host = args[1];
 			
-			Socket sock = new Socket(InetAddress.getByName(host),80);
+			Socket sock = new Socket(InetAddress.getByName(host),6111);
 			BufferedWriter wr = new BufferedWriter( new OutputStreamWriter(sock.getOutputStream(),"UTF8"));
 			Boolean bool = true;
 			while (bool)
@@ -309,6 +297,9 @@ public class Client
 	 * 
 	 * @param t
 	 * 		HTML string to check for image files.
+	 * 
+	 * @return
+	 * 		Returns whether or not the given string has at least one occurence of "<img ".
 	 */
 	private static boolean scanImages(String t)
 	{		
@@ -340,11 +331,14 @@ public class Client
 			String image = allImages.substring(beginIndex, endIndex);
 			if (image.contains("ad")) // if the found embedded image is an add, replace it with something else.
 			{
-				image = "ReplacementPicture.png"; //TODO: find how to get this picture
+				image = "ReplacementPicture.jpeg";
 				allImages = allImages.replace(allImages.substring(beginIndex, endIndex),image);
 			}
 			// GET operation to retrieve the image and store it locally -> perhaps use same function as in the main
 			
+			/**
+			 * Not needed in the html file of webpage.
+			 */
 			if (image.substring(0, 4) == "http")
 			{
 				String im = image.substring(7,image.length()); // http://.........
@@ -352,27 +346,52 @@ public class Client
 				host = im.substring(0, ind);
 				image = im.substring(ind,im.length());
 			}
-			System.out.println("TEST");
+			//System.out.println("TEST");
 
-			pr.println("GET " + path + "/" + image + " HTTP/1.1");
-			pr.println("Host: " + host);
-			pr.println("Connection: Keep-Alive");
-			pr.println();
-			
-			/*DataInputStream in = new DataInputStream(socket.getInputStream());
-			int len = in.readInt(); // length of the incoming image
-			byte[] im = new byte[len];
-			if (len > 0)
+			if (image != "ReplacementPicture.jpeg")
 			{
-				in.readFully(im,0,im.length); // read the entire image
-			}*/
+				pr.println("GET " + path + "/" + image + " HTTP/1.1");
+				pr.println("Host: " + host);
+				pr.println("Connection: Keep-Alive");
+				pr.println();
 			
-			InputStream is = socket.getInputStream(); // TODO: as long as the image is not to large, this works hopefully
-			byte[] im = is.readAllBytes();
+				DataInputStream in = new DataInputStream(socket.getInputStream());
+				int len = in.read();
+				int counter = 1;
+				byte[] t = new byte[0];
+				
+				while (len != -1)
+				{
+					ByteBuffer b = ByteBuffer.allocate(1);
+					b.putInt(len);
+					byte[] re = b.array();
+					byte[] im = new byte[counter];
+					System.arraycopy(t, 0, im, 0, counter-1);
+					System.arraycopy(re, 0, im, 0, 1);
+					counter ++;
+					t = im;
+					len = in.read();
+				}
+				byte[] im = t;
+				
+				/**
+				 * alternative 1 (works, but not to good).
+				 */
+				/*InputStream is = socket.getInputStream(); // TODO: as long as the image is not to large, this works hopefully
+				byte[] im = is.readAllBytes();*/
+				
+				/**
+				 * Alternative 2 (not complete).
+				 */
+				/*String im = "";
+				char[] cbuf = new char[1];
+				br.read(cbuf, 0, 1);
+				im += Character.toString(cbuf[0]);*/
 						
-			try (FileOutputStream fos = new FileOutputStream(image))
-			{
-				 fos.write(im);
+				try (FileOutputStream fos = new FileOutputStream(image))
+				{
+					fos.write(im);
+				}
 			}
 			
 			index = allImages.indexOf("<img ", endIndex);
