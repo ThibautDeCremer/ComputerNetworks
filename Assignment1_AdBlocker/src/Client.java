@@ -203,9 +203,7 @@ public class Client
 				System.out.println("Incoming content not with content-length or chunked");
 				System.out.println("Done");
 			}
-			
-			br.close();
-			
+						
 			if (scanImages(html))
 			{
 				html = processImages(html, host, path, sock);
@@ -225,6 +223,7 @@ public class Client
 			}
 			
 			System.out.println(html);
+			br.close();
 			sock.close();
 			System.out.println("Done"); // needed to see whether or not the program is still running
 			return;
