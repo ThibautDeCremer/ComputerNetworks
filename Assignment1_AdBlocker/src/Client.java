@@ -5,17 +5,17 @@
  */
 
 import java.net.*;
-import java.nio.ByteBuffer;
 import java.util.Scanner;
+import javax.imageio.*;
+import javax.imageio.stream.ImageInputStream;
+import java.awt.image.BufferedImage;
 import java.io.*;
 
 /**
  * TODO:
  * 	- GET image in processImages ok? Images that I try to read do not exist (empty bytes).
- * 	- -> store found image files locally -> it works but, image don't show when I try to open them from where they are stored
+ * 	- -> store found image files locally -> it works but, image don't show when I try to open them from where they are stored (contains no content).
  * 	- I have not yet tested the PUT and POST functions (how to make request to server?)
- * 
- * 	TODO: test of je de afbeeldingen zo kan ophalen met een GET request!!
  */
 
 public class Client
@@ -31,11 +31,27 @@ public class Client
 	 */
 	public static void main(String[] args) throws Exception
 	{
-		if (args.length != 2) // length of the command should be 2: command and host(+path)
+		if ((args.length < 2) || (args.length > 3)) // length of the command should be 2 or 3: command and host(+path) (+port)
 		{
 			System.out.println("Not a valid command");
 			System.out.println("Done");
 			return;
+		}
+		
+		int port = 80;
+		
+		if (args.length == 3)
+		{
+			try
+			{
+				port = Integer.parseInt(args[2],10);
+			}
+			catch (NumberFormatException e)
+			{
+				System.out.println("The port should be the 3 part of the input string");
+				System.out.println("Done");
+				return;
+			}
 		}
 		
 		/**
@@ -58,7 +74,7 @@ public class Client
 			else
 				host = args[1];
 			
-			Socket sock = new Socket(InetAddress.getByName(host),80); // open socket with default port 80
+			Socket sock = new Socket(InetAddress.getByName(host),port); // open socket with default port 80
 			PrintWriter pw = new PrintWriter(sock.getOutputStream(),true);
 			pw.println("HEAD " + path +" HTTP/1.1"); // as specified in the assignment, client program should support HTTP version 1.1
 			pw.println("Host: " + host);
@@ -83,7 +99,7 @@ public class Client
 		}
 		
 		/**
-		 * Part of the method that deals with GET requests. (WORKS hopefully for all sites) -> TODO: test met verschillende sites
+		 * Part of the method that deals with GET requests. (WORKS)
 		 */
 		else if (args[0].equals("GET"))
 		{
@@ -102,21 +118,16 @@ public class Client
 			else
 				host = args[1];
 			
-			Socket sock = new Socket(InetAddress.getByName(host),80); // open socket with default port 80
+			Socket sock = new Socket(InetAddress.getByName(host),port); // open socket with default port 80
 			PrintWriter pw = new PrintWriter(sock.getOutputStream(),true);
-			pw.println("GET " + path +" HTTP/1.1"); // as specified in the assignment, client program should support HTTP version 1.1
-			pw.println("Host: " + host);
-			pw.println("Connection: Keep-Alive"); // keep connection alive after making request
-			pw.println(); // always end with blank line
-			
-			/**
-			 * This is part is not useful anymore, should be deleted if all tests are successful.
-			 */
-			/*// test
-			InputStream so = sock.getInputStream();
-			byte[] b = new byte[4000];
-			int i = so.read(b);
-			// test*/
+			String req = "GET " + path +" HTTP/1.1\r\n";
+			req += "Host: " + host + "\r\n";
+			req += "User-Agent: niels\r\n";
+			req += "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n";
+			req += "Accept-Language: nl,en-US;q=0.7,en;q=0.3\r\n";
+			req += "Connection: keep-alive\r\n";
+			req += "Upgrade-Insecure-Requests: 1\r\n";
+			pw.println(req);
 			
 			InputStream inSt = sock.getInputStream();
 			BufferedReader br = new BufferedReader(new InputStreamReader(inSt));
@@ -142,22 +153,10 @@ public class Client
 				int cijfer = header.indexOf(ConLen);
 				int endIn = header.indexOf("\r\n", cijfer);
 				int leng = Integer.parseInt(header.substring(cijfer+(ConLen.length())+2,endIn));
-				int test = 0;
 				
-				// keep reading until all content is retrieved (Content-Length is given)
-				while (test < leng)
-				{
-					String t = br.readLine();
-					
-					if (t == null)
-						break;
-					
-					test += t.length()+1;
-					System.out.println(test);
-					html = html + t + "\r\n";
-					//leng -= (t.length()+2); // \r\n is only 2 characters
-				}
-				System.out.println(test);
+				char[] cbuf = new char[leng];
+				br.read(cbuf, 0, leng);
+				html = new String(cbuf);
 			}
 			
 			/**
@@ -166,14 +165,32 @@ public class Client
 			else if (header.contains("chunked"))
 			{
 				String h = br.readLine();
-				//System.out.println(h);
 				int counter = Integer.parseInt(h,16);
-				//System.out.println(counter);
-				Boolean fullTransfer = false; // check whether or not there has been a full transfer of data.
-				char[] cbuf = new char[1] ;
-				while(!fullTransfer)
+				//Boolean fullTransfer = false; // check whether or not there has been a full transfer of data.
+				//char[] cbuf = new char[1] ;
+				//while(!fullTransfer)
+				while (counter > 0)
 				{
-					while(counter > 0)
+					/**
+					 * If I run this code, it doesn't work.
+					 * But it works while debugging with a breakpoint before char[] cbuf = new ...
+					 */
+					char[] cbuf = new char[counter];
+					br.read(cbuf, 0, counter);
+					String t = new String(cbuf);
+					html += t;
+					h = br.readLine(); // empty line
+					h = br.readLine();
+					try
+					{
+						counter = Integer.parseInt(h,16);
+					}
+					catch (NumberFormatException e)
+					{
+						h = br.readLine();
+						counter = Integer.parseInt(h,16);
+					}
+					/*while(counter > 0)
 					{
 						//String s = br.readLine();
 						br.read(cbuf, 0, 1);
@@ -194,7 +211,7 @@ public class Client
 					{
 						fullTransfer = true;
 						html += "\r\n";
-					}
+					}*/
 				}
 			}
 			
@@ -203,10 +220,10 @@ public class Client
 				System.out.println("Incoming content not with content-length or chunked");
 				System.out.println("Done");
 			}
-						
+									
 			if (scanImages(html))
 			{
-				html = processImages(html, host, path, sock);
+				html = processImages(html, host, path, port, sock);
 			}
 			
 			FileWriter fw = new FileWriter("AdBlock.html"); // write to file
@@ -219,6 +236,7 @@ public class Client
 			}
 			catch (Exception e)
 			{
+				sock.close();
 				throw e;
 			}
 			
@@ -298,7 +316,7 @@ public class Client
 	 * 		HTML string to check for image files.
 	 * 
 	 * @return
-	 * 		Returns whether or not the given string has at least one occurence of "<img ".
+	 * 		Returns whether or not the given string has at least one occurrence of "<img ".
 	 */
 	private static boolean scanImages(String t)
 	{		
@@ -317,8 +335,11 @@ public class Client
 	 * @throws IOException 
 	 * @throws UnknownHostException 
 	 */
-	private static String processImages(String allImages, String host, String path, Socket socket) throws UnknownHostException, IOException
+	private static String processImages(String allImages, String host, String path, int port, Socket socket) throws UnknownHostException, IOException
 	{
+		//Socket s = new Socket(InetAddress.getByName(host),port);
+		InputStream is = socket.getInputStream();
+		BufferedReader bw = new BufferedReader(new InputStreamReader(is));
 		PrintWriter pr = new PrintWriter(socket.getOutputStream(),true);
 
 		int index = allImages.indexOf("<img ", 0); // function returns -1 if no index can be found
@@ -330,7 +351,7 @@ public class Client
 			String image = allImages.substring(beginIndex, endIndex);
 			if (image.contains("ad")) // if the found embedded image is an add, replace it with something else.
 			{
-				image = "ReplacementPicture.jpeg";
+				image = "ReplacementPicture.png";
 				allImages = allImages.replace(allImages.substring(beginIndex, endIndex),image);
 			}
 			// GET operation to retrieve the image and store it locally -> perhaps use same function as in the main
@@ -347,55 +368,86 @@ public class Client
 			}
 			//System.out.println("TEST");
 
-			if (image != "ReplacementPicture.jpeg")
+			if (image != "ReplacementPicture.png")
 			{
-				pr.println("GET " + path + "/" + image + " HTTP/1.1");
-				pr.println("Host: " + host);
-				pr.println("Connection: Keep-Alive");
-				pr.println();
-			
-				DataInputStream in = new DataInputStream(socket.getInputStream());
-				int len = in.read();
-				int counter = 1;
-				byte[] t = new byte[0];
+				String r = "GET " + path + image + " HTTP/1.1\r\n";
+				r += "Host: " + host + "\r\n";
+				r += "User-Agent: niels\r\n";
+				r += "Accept: image/webp,*/*\r\n";
+				r += "Accept-Language: nl,en-US;q=0.7,en;q=0.3\r\n";
+				r += "Accept-Encoding: gzip, deflate\r\n";
+				r += "Referer: http://" + host+path + "\r\n";
+				r += "Connection: keep-alive\r\n";
+				pr.println(r);
 				
-				while (len != -1)
+				String h = bw.readLine(); // parsing the header of the responds WORKS.
+				byte[] he = h.getBytes();
+				int count = he.length;
+				String header = h + "\r\n";
+				while(!h.equals("")) // parse header
 				{
-					ByteBuffer b = ByteBuffer.allocate(1);
-					b.putInt(len);
-					byte[] re = b.array();
-					byte[] im = new byte[counter];
-					System.arraycopy(t, 0, im, 0, counter-1);
-					System.arraycopy(re, 0, im, 0, 1);
-					counter ++;
-					t = im;
-					len = in.read();
+					h = bw.readLine();
+					he = h.getBytes();
+					count += he.length;
+					header += h + "\r\n";
 				}
-				byte[] im = t;
+								
+				String ConLen = "Content-Length";
+				int cijfer = header.indexOf(ConLen);
+				int endIn = header.indexOf("\r\n", cijfer);
+				int leng = Integer.parseInt(header.substring(cijfer+(ConLen.length())+2,endIn));
+				byte[] im = new byte[leng];
+				is.read(im,0,leng);
+				ByteArrayInputStream ins = new ByteArrayInputStream(im); // TODO: figure out why this won't work with our images, most likely are the bytes in im not from the actual image
+				BufferedImage bi = ImageIO.read(ins);
+				ImageIO.write(bi, "jpg", new File(image));
+				
+				/*BufferedImage im = ImageIO.read(is);
+				ByteArrayOutputStream baos = new ByteArrayOutputStream();
+				ImageIO.write(im, "jpg", baos);
+				baos.flush();
+				byte[] ba = baos.toByteArray();
+				System.out.println(ba);
+				baos.close();
+				
+				InputStream is2 = new ByteArrayInputStream(ba);
+				BufferedImage bi = ImageIO.read(is2);
+				ImageIO.write(bi, "jpg", new File(image));*/
+				
+				/*DataInputStream in = new DataInputStream(socket.getInputStream());
+				byte[] b = new byte[1];
+				int check = is.read(b); // read one byte at a time.
+				byte[] im = new byte[0];
+				
+				while (check == 1) // check should be -1 when the transfer is finished
+				{
+					byte[] inRes = new byte[im.length+1];
+					System.arraycopy(im, 0, inRes, 0, im.length);
+					System.arraycopy(b, 0, inRes, im.length, b.length);
+					im = inRes;
+					check = in.read(b);
+				}*/
 				
 				/**
 				 * alternative 1 (works, but not to good).
 				 */
-				/*InputStream is = socket.getInputStream(); // TODO: as long as the image is not to large, this works hopefully
+				/*InputStream is = s.getInputStream(); // TODO: as long as the image is not to large, this works hopefully
 				byte[] im = is.readAllBytes();*/
 				
 				/**
-				 * Alternative 2 (not complete).
+				 * Alternative 2 (buffered image is null -> exception)
 				 */
-				/*String im = "";
-				char[] cbuf = new char[1];
-				br.read(cbuf, 0, 1);
-				im += Character.toString(cbuf[0]);*/
-						
-				try (FileOutputStream fos = new FileOutputStream(image))
-				{
-					fos.write(im);
-				}
+				/*File newIm = new File(image);
+				InputStream is = new ByteArrayInputStream(im);
+				Image i = ImageIO.read(is);
+				ImageIO.write((RenderedImage) i, "jpg", newIm);*/
 			}
 			
 			index = allImages.indexOf("<img ", endIndex);
 		}
 		
+		bw.close();
+		//s.close();
 		return allImages;
 	}
 }
