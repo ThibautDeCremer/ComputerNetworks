@@ -7,14 +7,12 @@
 import java.net.*;
 import java.util.Scanner;
 import javax.imageio.*;
-import javax.imageio.stream.ImageInputStream;
 import java.awt.image.BufferedImage;
 import java.io.*;
 
 /**
  * TODO:
- * 	- GET image in processImages ok? Images that I try to read do not exist (empty bytes).
- * 	- -> store found image files locally -> it works but, image don't show when I try to open them from where they are stored (contains no content).
+ * 	- GET method for images -> created BufferedImage is equals null -> NullPointerException (but the code is fine, the bytes are not)
  * 	- I have not yet tested the PUT and POST functions (how to make request to server?)
  */
 
