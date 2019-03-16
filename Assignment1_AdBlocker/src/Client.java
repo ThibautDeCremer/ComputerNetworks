@@ -379,23 +379,28 @@ public class Client
 				pr.println(r);
 				
 				String h = bw.readLine(); // parsing the header of the responds WORKS.
-				byte[] he = h.getBytes();
-				int count = he.length;
 				String header = h + "\r\n";
 				while(!h.equals("")) // parse header
 				{
 					h = bw.readLine();
-					he = h.getBytes();
-					count += he.length;
 					header += h + "\r\n";
 				}
+				System.out.println(header);
 								
 				String ConLen = "Content-Length";
 				int cijfer = header.indexOf(ConLen);
 				int endIn = header.indexOf("\r\n", cijfer);
 				int leng = Integer.parseInt(header.substring(cijfer+(ConLen.length())+2,endIn));
 				byte[] im = new byte[leng];
-				is.read(im,0,leng);
+				int c = 0;
+				while (c<leng)
+				{
+					int rea = is.read(im,c,leng-c);
+					if (rea == -1)
+						break;
+					else
+						c += rea;
+				}
 				ByteArrayInputStream ins = new ByteArrayInputStream(im); // TODO: figure out why this won't work with our images, most likely are the bytes in im not from the actual image
 				BufferedImage bi = ImageIO.read(ins);
 				ImageIO.write(bi, "jpg", new File(image));
