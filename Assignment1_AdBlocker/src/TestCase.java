@@ -6,20 +6,76 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class TestCase {
-
 	public static void main(String[] args) throws IOException, WrongRequestException {
-		ServerSocket m_ServerSocket = new ServerSocket(6001);
+		//ServerSocket m_ServerSocket = new ServerSocket(6001);
 		try {
-			Socket clientSocket = m_ServerSocket.accept();
-			printRequest(clientSocket);
-			streamImage(clientSocket);
-			//printRequest(clientSocket);
-			m_ServerSocket.close();
+			POST();
 			System.out.println("Done");
 		} catch (Exception e) {
-			m_ServerSocket.close();
+			//m_ServerSocket.close();
 			e.printStackTrace();
 		}
+	}
+	
+	private static void POST() throws IOException {
+		String host = null;
+		String path = "/";
+		
+		/*
+		if (args[1].contains("/")) // if-else statement to retrieve the host and path
+		{
+			int index = args[1].indexOf("/");
+			int l = args[1].length();
+			
+			host = args[1].substring(0, index);
+			path = args[1].substring(index, l);
+		}
+		
+		else
+			host = args[1];*/
+		
+		host="localhost";		//TODO:newPOST change host and path to the correct things
+		path="/tempFile.txt";
+		
+		Socket sock = new Socket(InetAddress.getByName(host),6111);
+		BufferedWriter wr = new BufferedWriter( new OutputStreamWriter(sock.getOutputStream(),"UTF8"));
+		Boolean bool = true;
+		while (bool)
+		{
+			System.out.println("Enter something to upload in server: ");
+			/*
+			Scanner scanner = new Scanner(System.in);
+			String input = scanner.nextLine();
+			String write = URLEncoder.encode(input,"UTF-8"); // www works with UTF-8
+			*/
+			String write="Let's hope this works"; // TODO:newPOST change this to whatever message you want
+			wr.write("POST"+" " + path + " HTTP/1.1\r\n");
+			wr.write("Host: " + host + "\r\n");
+			wr.write("Content-Type: text/html\r\n"); //application/x-www-form-urlencoded\r\n
+			wr.write("Content-Length: " + write.length() + "\r\n");
+			wr.write("Connection: Close\r\n");
+			wr.write("\r\n");
+			wr.write(write+"\r\n"); //TODO:newPOST Server needs a \r\n after message
+			wr.flush();
+			
+			BufferedReader br = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+			String t;
+			
+			while(((t = br.readLine()) != null))
+			{
+				System.out.println(t);
+			}
+			
+			br.close();
+			//scanner.close();
+			
+			//if (input.equals(""))
+				bool = false;
+		}
+		wr.close();
+		sock.close();
+		System.out.println("Done");
+		return;
 	}
 	
 	private static void printRequest(Socket clientSocket) throws IOException {
