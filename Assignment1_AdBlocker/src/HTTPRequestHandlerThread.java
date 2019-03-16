@@ -323,7 +323,7 @@ class HTTPRequestHandlerThread extends Thread {
 	        	//System.out.println(reader.readLine());
 	        	//System.out.println("test");
 	    		//System.out.println(map.get("Content-length"));
-	    		int length = Integer.parseInt(map.get("Content-length"));
+	    		int length = Integer.parseInt(map.get("Content-Length"));
 	    		while(length>0)  {
 	    		t=reader.readLine();
 	    		body+=t+"\r\n";
