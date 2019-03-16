@@ -337,7 +337,7 @@ public class Client
 	{
 		//Socket s = new Socket(InetAddress.getByName(host),port);
 		InputStream is = socket.getInputStream();
-		BufferedReader bw = new BufferedReader(new InputStreamReader(is));
+		BufferedReader bw = new BufferedReader(new InputStreamReader(is)); //TODO: dit waarschijnlijk weglaten -> werk met is.read() [morgen]
 		PrintWriter pr = new PrintWriter(socket.getOutputStream(),true);
 
 		int index = allImages.indexOf("<img ", 0); // function returns -1 if no index can be found
