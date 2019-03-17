@@ -13,7 +13,7 @@ import java.io.*;
 
 /**
  * TODO:
- * 	- GET method for images -> created BufferedImage is equals null -> NullPointerException (but the code is fine, the bytes are not)
+ * 	- Image read is to slow, connection closed before requesting robot.jpg
  * 	- I have not yet tested the PUT and POST functions (how to make request to server?)
  */
 
