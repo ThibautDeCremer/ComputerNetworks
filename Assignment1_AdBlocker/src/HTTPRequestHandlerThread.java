@@ -76,7 +76,7 @@ class HTTPRequestHandlerThread extends Thread {
 				if (!(body==null)) output.write(body);
 				output.flush();
 				//output.close();
-				
+				System.out.println("write complete");
 				//this.clientSocket.close();
 				
 				if (closeSocket) {
