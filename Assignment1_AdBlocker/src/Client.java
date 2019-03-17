@@ -5,6 +5,7 @@
  */
 
 import java.net.*;
+import java.util.Arrays;
 import java.util.Scanner;
 import javax.imageio.*;
 import java.awt.image.BufferedImage;
@@ -326,18 +327,52 @@ public class Client
 	}
 	
 	/**
+	 * Method that searches the first index of a byte array in the larger byte array.
+	 * 
+	 * @param byteArray
+	 * 		Byte array to search in.
+	 * @param ba
+	 * 		Byte array to search in the larger byte array, length must be at least 2.
+	 * 
+	 * @return
+	 * 		Index of the first occurrence. -1 is returned if no such index can be found or the length of ba is smaller than 2.
+	 */
+	private static int byteSearch(byte[] byteArray, byte[] ba) // This works
+	{
+		int L = byteArray.length;
+		int l = ba.length;
+		
+		if (l < 2)
+			return -1;
+		
+		for(int i=0; i < (L-l+1); i++)
+		{
+			if(byteArray[i] == ba[0])
+			{
+				for(int j=1;j<l;j++)
+				{
+					if((byteArray[i+j] == ba[j]) && (j == l-1))
+						return i;
+					else if(byteArray[i+j] != ba[j])
+						break;
+				}
+			}
+		}
+		
+		return -1;
+	}
+	
+	/**
 	 * Method to deal with  all images in the HTML file. This method also implements the ad block.
 	 * 
 	 * @param allImages
 	 * 		String containing all HTML lines that reference images.
-	 * @throws IOException 
-	 * @throws UnknownHostException 
+	 * @throws Exception
+	 * 		If no header is found in the incoming byte array, an exception is thrown
 	 */
-	private static String processImages(String allImages, String host, String path, int port, Socket socket) throws UnknownHostException, IOException
+	private static String processImages(String allImages, String host, String path, int port, Socket socket) throws Exception
 	{
-		//Socket s = new Socket(InetAddress.getByName(host),port);
 		InputStream is = socket.getInputStream();
-		BufferedReader bw = new BufferedReader(new InputStreamReader(is)); //TODO: dit waarschijnlijk weglaten -> werk met is.read() [morgen]
 		PrintWriter pr = new PrintWriter(socket.getOutputStream(),true);
 
 		int index = allImages.indexOf("<img ", 0); // function returns -1 if no index can be found
@@ -378,79 +413,91 @@ public class Client
 				r += "Connection: keep-alive\r\n";
 				pr.println(r);
 				
-				String h = bw.readLine(); // parsing the header of the responds WORKS.
-				String header = h + "\r\n";
-				while(!h.equals("")) // parse header
-				{
-					h = bw.readLine();
-					header += h + "\r\n";
-				}
-				System.out.println(header);
-								
-				String ConLen = "Content-Length";
-				int cijfer = header.indexOf(ConLen);
-				int endIn = header.indexOf("\r\n", cijfer);
-				int leng = Integer.parseInt(header.substring(cijfer+(ConLen.length())+2,endIn));
-				byte[] im = new byte[leng];
+				/*byte[] endOfHeader = {13,10,13,10}; // equals \r\n in bytes -> indicates end of header
 				int c = 0;
-				while (c<leng)
+				int counter = 0;
+				byte[] b = new byte[1];
+				byte[] check = new byte[4];
+				byte[] he = new byte[0];
+				
+				while(c!=-1) // first try to parse the header
 				{
-					int rea = is.read(im,c,leng-c);
-					if (rea == -1)
-						break;
-					else
-						c += rea;
+					c = is.read(b, 0, 1); // read a byte at a time
+					
+					if (c != 1)
+					{
+						counter ++;
+						byte[] ba = new byte[he.length+b.length];
+						System.arraycopy(he, 0, ba, 0, he.length);
+						System.arraycopy(b, 0, ba, he.length, b.length);
+						he = ba;
+						
+						if(counter>=4)
+						{
+							System.arraycopy(he, he.length-4, check, 0, 4);
+							
+							if (check == endOfHeader)
+								c = -1;
+						}
+					}
 				}
-				ByteArrayInputStream ins = new ByteArrayInputStream(im); // TODO: figure out why this won't work with our images, most likely are the bytes in im not from the actual image
+				
+				String headr = new String(he, 0, he.length); // decode header from bytes to string
+				String ConLen = "Content-Length";
+				int cijfer = headr.indexOf(ConLen);
+				int endIn = headr.indexOf("\r\n", cijfer);
+				int leng = Integer.parseInt(headr.substring(cijfer+(ConLen.length())+2,endIn));
+				
+				byte[] im = new byte[leng];
+				int ch = 0;
+				while(ch < leng)
+				{
+					int che = is.read(im, ch, leng-ch);
+					ch += che;
+				}
+				
+				ByteArrayInputStream ins = new ByteArrayInputStream(im);
 				BufferedImage bi = ImageIO.read(ins);
-				ImageIO.write(bi, "jpg", new File(image));
-				
-				/*BufferedImage im = ImageIO.read(is);
-				ByteArrayOutputStream baos = new ByteArrayOutputStream();
-				ImageIO.write(im, "jpg", baos);
-				baos.flush();
-				byte[] ba = baos.toByteArray();
-				System.out.println(ba);
-				baos.close();
-				
-				InputStream is2 = new ByteArrayInputStream(ba);
-				BufferedImage bi = ImageIO.read(is2);
 				ImageIO.write(bi, "jpg", new File(image));*/
 				
-				/*DataInputStream in = new DataInputStream(socket.getInputStream());
+				int c = 0;
 				byte[] b = new byte[1];
-				int check = is.read(b); // read one byte at a time.
 				byte[] im = new byte[0];
-				
-				while (check == 1) // check should be -1 when the transfer is finished
+				while (c != -1) // parse the entire incoming message (including the header)
 				{
-					byte[] inRes = new byte[im.length+1];
-					System.arraycopy(im, 0, inRes, 0, im.length);
-					System.arraycopy(b, 0, inRes, im.length, b.length);
-					im = inRes;
-					check = in.read(b);
-				}*/
+					c = is.read(b, 0, 1); // read a byte at a time
+					
+					if (c != -1)
+					{
+						byte[] ba = new byte[im.length+b.length];
+						System.arraycopy(im, 0, ba, 0, im.length);
+						System.arraycopy(b, 0, ba, im.length, b.length);
+						im = ba;
+					}
+				}
 				
-				/**
-				 * alternative 1 (works, but not to good).
-				 */
-				/*InputStream is = s.getInputStream(); // TODO: as long as the image is not to large, this works hopefully
-				byte[] im = is.readAllBytes();*/
+				byte[] endOfHeader = {13,10,13,10}; // equals \r\n in bytes -> indicates end of header
+				int bIndex = byteSearch(im,endOfHeader);
 				
-				/**
-				 * Alternative 2 (buffered image is null -> exception)
-				 */
-				/*File newIm = new File(image);
-				InputStream is = new ByteArrayInputStream(im);
-				Image i = ImageIO.read(is);
-				ImageIO.write((RenderedImage) i, "jpg", newIm);*/
+				if(bIndex != -1)
+				{
+					String header = new String(Arrays.copyOfRange(im, 0, bIndex)); // parsing header WORKS.
+					System.out.println(header);
+					im = Arrays.copyOfRange(im, bIndex+4, im.length);
+				}
+				else
+				{
+					System.out.println("Something went wrong with image: " + image);
+					throw new Exception();
+				}
+				
+				ByteArrayInputStream ins = new ByteArrayInputStream(im);
+				BufferedImage bi = ImageIO.read(ins);
+				ImageIO.write(bi, "jpg", new File(image));
 			}
-			
 			index = allImages.indexOf("<img ", endIndex);
 		}
 		
-		bw.close();
-		//s.close();
 		return allImages;
 	}
 }
