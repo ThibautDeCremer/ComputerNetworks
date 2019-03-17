@@ -10,11 +10,6 @@ import javax.imageio.*;
 import java.awt.image.BufferedImage;
 import java.io.*;
 
-/**
- * TODO:
- * 	- I have not yet tested the PUT and POST functions (how to make request to server?)
- */
-
 public class Client
 {
 	/**
@@ -244,10 +239,10 @@ public class Client
 			return;
 		}
 		
-		else if ((args[0].equals("PUT")) || (args[0].equals("POST"))) // TODO: voeg content-length toe aan upload
+		else if ((args[0].equals("PUT")) || (args[0].equals("POST")))
 		{
 			String host = null;
-			String path = "/";
+			String path = "/newFile.txt";
 			
 			if (args[1].contains("/")) // if-else statement to retrieve the host and path
 			{
@@ -256,42 +251,44 @@ public class Client
 				
 				host = args[1].substring(0, index);
 				path = args[1].substring(index, l);
+				if(path.substring(path.length()-4, path.length()) != ".txt")
+					path += ".txt";
 			}
 			
 			else
 				host = args[1];
 			
+			System.out.println(args[0]);
+			System.out.println(host);
+			System.out.println(path);
+			
+			System.out.println("Enter something to upload in server: ");
+			Scanner scanner = new Scanner(System.in);
+			String write = scanner.nextLine();
+			
 			Socket sock = new Socket(InetAddress.getByName(host),6111);
 			BufferedWriter wr = new BufferedWriter( new OutputStreamWriter(sock.getOutputStream(),"UTF8"));
-			Boolean bool = true;
-			while (bool)
+			//String write = URLEncoder.encode(input,"UTF-8"); // www works with UTF-8
+			
+			wr.write(args[0]+" " + path + " HTTP/1.1\r\n");
+			wr.write("Host: " + host + "\r\n");
+			wr.write("Content-Type: text/html\r\n"); //application/x-www-form-urlencoded\r\n
+			wr.write("Content-Length: " + write.length() + "\r\n");
+			wr.write("Connection: Close\r\n");
+			wr.write("\r\n");
+			wr.write(write+"\r\n");
+			wr.flush();
+			
+			BufferedReader br = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+			String t;
+			
+			while(((t = br.readLine()) != null))
 			{
-				System.out.println("Enter something to upload in server: ");
-				Scanner scanner = new Scanner(System.in);
-				String input = scanner.nextLine();
-				String write = URLEncoder.encode(input,"UTF-8"); // www works with UTF-8
-				wr.write(args[0] + " " + path + "HTTP/1.1");
-				wr.write("Host: " + host);
-				wr.write("Content-Type: text/html"); //application/x-www-form-urlencoded\r\n
-				wr.write("Content-Length: " + write.length() + "\r\n");
-				wr.write("\r\n");
-				wr.write(write);
-				wr.flush();
-				
-				BufferedReader br = new BufferedReader(new InputStreamReader(sock.getInputStream()));
-				String t;
-				
-				while(((t = br.readLine()) != null))
-				{
-					System.out.println(t);
-				}
-				
-				br.close();
-				scanner.close();
-				
-				if (input.equals(""))
-					bool = false;
+				System.out.println(t);
 			}
+			
+			br.close();
+			scanner.close();
 			wr.close();
 			sock.close();
 			System.out.println("Done");
