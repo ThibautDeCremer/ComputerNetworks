@@ -1,28 +1,18 @@
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.net.ServerSocket;
-import java.net.Socket;
+import java.io.*;
+import java.net.*;
 import java.nio.file.Files;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.TimeZone;
-import java.util.stream.Collectors;
+import java.util.*;
 
+/**
+ * An http request handler server thread for an http client-server application
+ * 
+ * Written for Computer Networks 2019 
+ * 
+ * @author Thibaut De Cremer and Niels Verdijck
+ *
+ */
 class HTTPRequestHandlerThread extends Thread {
 	  Socket clientSocket;
 	  int clientID = -1;
@@ -33,6 +23,18 @@ class HTTPRequestHandlerThread extends Thread {
 	    clientID = i;
 	  }
 
+	  
+	  /**
+	   * Main function that gets called upon start of thread
+	   * 
+	   * Parses the incoming HTTP request and calls the appropriate function to generate response
+	   * 
+	   * If at any point of execution an error in the HTTP request occurs, a 400 response is sent
+	   * If at any point of execution a requested resource could not be found a 404 response is sent
+	   * If a server error occurs a 500 response is sent
+	   * If a requested method is not implemented, a 501 response is sent
+	   * else a 304(=if-modified-since) or 200 is sent
+	   */
 	  public void run() {
 	    System.out.println("Accepted Client : ID - " + clientID + " : Address - "
 	        + clientSocket.getInetAddress().getHostName());
@@ -63,16 +65,17 @@ class HTTPRequestHandlerThread extends Thread {
 				}
 				boolean closeSocket = true;
 				//implement not closing on Connection: keep-alive
-				if (parsedRequest.get("Connection").equals("Keep-Alive")) {
+				if (parsedRequest.get("Connection").equals("Keep-Alive")
+						|| parsedRequest.get("Connection").equals("keep-alive")) {
 					closeSocket = false;
 				} else {
 					response[0]+="Connection: Closed";
 				}
 				output.write(responseBytes.get("headers"));
 				byte[] body=responseBytes.get("body");
-				if (!body.equals(null)) output.write(body);
+				if (!(body==null)) output.write(body);
 				output.flush();
-				output.close();
+				//output.close();
 				
 				//this.clientSocket.close();
 				
@@ -112,8 +115,16 @@ class HTTPRequestHandlerThread extends Thread {
 			}
             System.out.println("Request processed: " + time);
         } catch (IOException | ParseException /*| ClassNotFoundException*/ e) {
-            //This is the 500 response code
-        	
+        	try {
+        		OutputStream output = clientSocket.getOutputStream();
+				output.write(("HTTP/1.1 500 Internal Server Error \r\n"
+						+ this.getDateHeader()).getBytes());
+				output.flush();
+				output.close();
+			} catch (IOException e1) {
+				// Needed to stop errors
+				e1.printStackTrace();
+			}
         }
 	  }
 
@@ -300,7 +311,7 @@ class HTTPRequestHandlerThread extends Thread {
 	    	//System.out.println("commencing parser");
 			Map<String, String> map = new HashMap<String, String>();
 	    	String currLine = reader.readLine();
-	    	//System.out.println(currLine);
+	    	System.out.println(currLine);
 	    	String[] currCommand = currLine.split("\\s+");
 	    	if (currCommand.length!=3
 	    			|| !this.isValidMethod(currCommand[0])
@@ -319,16 +330,12 @@ class HTTPRequestHandlerThread extends Thread {
 	    	if (! (map.get("type").equals("GET")
 	    			|| map.get("type").equals("HEAD"))) {
 	    		String body = "";
-	        	//System.out.println("test");
-	        	//System.out.println(reader.readLine());
-	        	//System.out.println("test");
-	    		//System.out.println(map.get("Content-length"));
+	    		//System.out.println(map.get("Content-Length"));
 	    		int length = Integer.parseInt(map.get("Content-Length"));
 	    		while(length>0)  {
 	    		t=reader.readLine();
 	    		body+=t+"\r\n";
 	    		length-=(t.length()+2);
-	    		//System.out.println(length);
 	    		}
 	        	map.put("body", body);
 	    	}
