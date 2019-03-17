@@ -5,7 +5,6 @@
  */
 
 import java.net.*;
-import java.util.Arrays;
 import java.util.Scanner;
 import javax.imageio.*;
 import java.awt.image.BufferedImage;
@@ -13,7 +12,6 @@ import java.io.*;
 
 /**
  * TODO:
- * 	- Image read is to slow, connection closed before requesting robot.jpg
  * 	- I have not yet tested the PUT and POST functions (how to make request to server?)
  */
 
