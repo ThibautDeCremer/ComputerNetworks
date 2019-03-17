@@ -154,7 +154,7 @@ public class Client
 				int leng = Integer.parseInt(header.substring(cijfer+(ConLen.length())+2,endIn));
 				
 				char[] cbuf = new char[leng];
-				br.read(cbuf, 0, leng);
+				br.read(cbuf, 0, leng); // iterative method that reads until all characters are read.
 				html = new String(cbuf);
 			}
 			
@@ -335,14 +335,14 @@ public class Client
 	 * 		Byte array to search in the larger byte array, length must be at least 2.
 	 * 
 	 * @return
-	 * 		Index of the first occurrence. -1 is returned if no such index can be found or the length of ba is smaller than 2.
+	 * 		Index of the first occurrence. -1 is returned if no such index can be found or the length of ba is smaller than 2 or bigger than byteArray.
 	 */
 	private static int byteSearch(byte[] byteArray, byte[] ba) // This works
 	{
 		int L = byteArray.length;
 		int l = ba.length;
 		
-		if (l < 2)
+		if ((l < 2) || (L < l))
 			return -1;
 		
 		for(int i=0; i < (L-l+1); i++)
@@ -413,54 +413,10 @@ public class Client
 				r += "Connection: keep-alive\r\n";
 				pr.println(r);
 				
-				/*byte[] endOfHeader = {13,10,13,10}; // equals \r\n in bytes -> indicates end of header
-				int c = 0;
-				int counter = 0;
-				byte[] b = new byte[1];
-				byte[] check = new byte[4];
-				byte[] he = new byte[0];
-				
-				while(c!=-1) // first try to parse the header
-				{
-					c = is.read(b, 0, 1); // read a byte at a time
-					
-					if (c != 1)
-					{
-						counter ++;
-						byte[] ba = new byte[he.length+b.length];
-						System.arraycopy(he, 0, ba, 0, he.length);
-						System.arraycopy(b, 0, ba, he.length, b.length);
-						he = ba;
-						
-						if(counter>=4)
-						{
-							System.arraycopy(he, he.length-4, check, 0, 4);
-							
-							if (check == endOfHeader)
-								c = -1;
-						}
-					}
-				}
-				
-				String headr = new String(he, 0, he.length); // decode header from bytes to string
-				String ConLen = "Content-Length";
-				int cijfer = headr.indexOf(ConLen);
-				int endIn = headr.indexOf("\r\n", cijfer);
-				int leng = Integer.parseInt(headr.substring(cijfer+(ConLen.length())+2,endIn));
-				
-				byte[] im = new byte[leng];
-				int ch = 0;
-				while(ch < leng)
-				{
-					int che = is.read(im, ch, leng-ch);
-					ch += che;
-				}
-				
-				ByteArrayInputStream ins = new ByteArrayInputStream(im);
-				BufferedImage bi = ImageIO.read(ins);
-				ImageIO.write(bi, "jpg", new File(image));*/
-				
-				int c = 0;
+				/**
+				 * Slow working code, but it works. It takes 6.45 seconds after HTTP 200 ok and get robot.jpg
+				 */
+				/*int c = 0;
 				byte[] b = new byte[1];
 				byte[] im = new byte[0];
 				while (c != -1) // parse the entire incoming message (including the header)
@@ -489,6 +445,94 @@ public class Client
 				{
 					System.out.println("Something went wrong with image: " + image);
 					throw new Exception();
+				}
+				
+				ByteArrayInputStream ins = new ByteArrayInputStream(im);
+				BufferedImage bi = ImageIO.read(ins);
+				ImageIO.write(bi, "jpg", new File(image));*/
+				
+				/**
+				 * Same code as before, but hopefully a bit faster. It takes 3.644 seconds between GET request of solar.jpg and GET request of robot.jpg
+				 */
+				/*int c = 0;
+				byte[] b = new byte[215010+272+4]; // len = image-content + entire header of solar.jpg
+				byte[] im = new byte[0];
+				while (c != -1) // parse the entire incoming message (including the header)
+				{
+					c = is.read(b, 0, 215010+272+4);
+					
+					if (c != -1)
+					{
+						byte[] ba = new byte[im.length+c];
+						System.arraycopy(im, 0, ba, 0, im.length);
+						System.arraycopy(b, 0, ba, im.length, c);
+						im = ba;
+					}
+				}
+				
+				byte[] endOfHeader = {13,10,13,10}; // equals \r\n in bytes -> indicates end of header
+				int bIndex = byteSearch(im,endOfHeader);
+				
+				if(bIndex != -1)
+				{
+					String header = new String(Arrays.copyOfRange(im, 0, bIndex)); // parsing header WORKS.
+					System.out.println(header);
+					im = Arrays.copyOfRange(im, bIndex+4, im.length);
+				}
+				else
+				{
+					System.out.println("Something went wrong with image: " + image);
+					throw new Exception();
+				}
+				
+				ByteArrayInputStream ins = new ByteArrayInputStream(im);
+				BufferedImage bi = ImageIO.read(ins);
+				ImageIO.write(bi, "jpg", new File(image));*/
+				
+				/**
+				 * Other alternative.
+				 */
+				byte[] endOfHeader = {13,10,13,10}; // equals \r\n in bytes -> indicates end of header
+				int c = 0;
+				byte[] b = new byte[1];
+				byte[] he = new byte[0];
+				
+				while(c!=-1) // first try to parse the header
+				{
+					c = is.read(b, 0, 1); // read a byte at a time
+					
+					if (c != -1)
+					{
+						byte[] ba = new byte[he.length+b.length];
+						System.arraycopy(he, 0, ba, 0, he.length);
+						System.arraycopy(b, 0, ba, he.length, b.length);
+						he = ba;
+						
+						if (byteSearch(he,endOfHeader) != -1)
+							c = -1;
+					}
+				}
+				
+				String headr = new String(he, 0, he.length); // decode header from bytes to string
+				//System.out.println(headr);
+				String ConLen = "Content-Length";
+				int cijfer = headr.indexOf(ConLen);
+				int endIn = headr.indexOf("\r\n", cijfer);
+				int leng = Integer.parseInt(headr.substring(cijfer+(ConLen.length())+2,endIn));
+				
+				int f = 0;
+				int che = 0;
+				byte[] tf = new byte[leng];
+				byte[] im = new byte[leng];
+				while ((che < leng) && (f != -1))
+				{
+					f = is.read(tf, 0, leng-che);
+					
+					if (f != -1)
+					{
+						System.arraycopy(tf, 0, im, che, f);
+						che += f;
+					}
 				}
 				
 				ByteArrayInputStream ins = new ByteArrayInputStream(im);
