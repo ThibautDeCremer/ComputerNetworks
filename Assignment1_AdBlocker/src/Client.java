@@ -411,85 +411,6 @@ public class Client
 				r += "Connection: keep-alive\r\n";
 				pr.println(r);
 				
-				/**
-				 * Slow working code, but it works. It takes 6.45 seconds after HTTP 200 ok and get robot.jpg
-				 */
-				/*int c = 0;
-				byte[] b = new byte[1];
-				byte[] im = new byte[0];
-				while (c != -1) // parse the entire incoming message (including the header)
-				{
-					c = is.read(b, 0, 1); // read a byte at a time
-					
-					if (c != -1)
-					{
-						byte[] ba = new byte[im.length+b.length];
-						System.arraycopy(im, 0, ba, 0, im.length);
-						System.arraycopy(b, 0, ba, im.length, b.length);
-						im = ba;
-					}
-				}
-				
-				byte[] endOfHeader = {13,10,13,10}; // equals \r\n in bytes -> indicates end of header
-				int bIndex = byteSearch(im,endOfHeader);
-				
-				if(bIndex != -1)
-				{
-					String header = new String(Arrays.copyOfRange(im, 0, bIndex)); // parsing header WORKS.
-					System.out.println(header);
-					im = Arrays.copyOfRange(im, bIndex+4, im.length);
-				}
-				else
-				{
-					System.out.println("Something went wrong with image: " + image);
-					throw new Exception();
-				}
-				
-				ByteArrayInputStream ins = new ByteArrayInputStream(im);
-				BufferedImage bi = ImageIO.read(ins);
-				ImageIO.write(bi, "jpg", new File(image));*/
-				
-				/**
-				 * Same code as before, but hopefully a bit faster. It takes 3.644 seconds between GET request of solar.jpg and GET request of robot.jpg
-				 */
-				/*int c = 0;
-				byte[] b = new byte[215010+272+4]; // len = image-content + entire header of solar.jpg
-				byte[] im = new byte[0];
-				while (c != -1) // parse the entire incoming message (including the header)
-				{
-					c = is.read(b, 0, 215010+272+4);
-					
-					if (c != -1)
-					{
-						byte[] ba = new byte[im.length+c];
-						System.arraycopy(im, 0, ba, 0, im.length);
-						System.arraycopy(b, 0, ba, im.length, c);
-						im = ba;
-					}
-				}
-				
-				byte[] endOfHeader = {13,10,13,10}; // equals \r\n in bytes -> indicates end of header
-				int bIndex = byteSearch(im,endOfHeader);
-				
-				if(bIndex != -1)
-				{
-					String header = new String(Arrays.copyOfRange(im, 0, bIndex)); // parsing header WORKS.
-					System.out.println(header);
-					im = Arrays.copyOfRange(im, bIndex+4, im.length);
-				}
-				else
-				{
-					System.out.println("Something went wrong with image: " + image);
-					throw new Exception();
-				}
-				
-				ByteArrayInputStream ins = new ByteArrayInputStream(im);
-				BufferedImage bi = ImageIO.read(ins);
-				ImageIO.write(bi, "jpg", new File(image));*/
-				
-				/**
-				 * Other alternative.
-				 */
 				byte[] endOfHeader = {13,10,13,10}; // equals \r\n in bytes -> indicates end of header
 				int c = 0;
 				byte[] b = new byte[1];
@@ -512,7 +433,6 @@ public class Client
 				}
 				
 				String headr = new String(he, 0, he.length); // decode header from bytes to string
-				//System.out.println(headr);
 				String ConLen = "Content-Length";
 				int cijfer = headr.indexOf(ConLen);
 				int endIn = headr.indexOf("\r\n", cijfer);
