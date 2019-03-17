@@ -21,7 +21,6 @@ public class TestCase {
 		String host = null;
 		String path = "/";
 		
-		/*
 		if (args[1].contains("/")) // if-else statement to retrieve the host and path
 		{
 			int index = args[1].indexOf("/");
@@ -32,46 +31,41 @@ public class TestCase {
 		}
 		
 		else
-			host = args[1];*/
+			host = args[1];
 		
-		host="localhost";		//TODO:newPOST change host and path to the correct things
-		path="/tempFile.txt";
+		//host="localhost";		//TODO:newPOST change host and path to the correct things
+		//path="/tempFile.txt";
+		System.out.println(args[0]);
+		System.out.println(host);
+		System.out.println(path);
+		
+		System.out.println("Enter something to upload in server: ");
+		Scanner scanner = new Scanner(System.in);
+		String write = scanner.nextLine();
 		
 		Socket sock = new Socket(InetAddress.getByName(host),6111);
 		BufferedWriter wr = new BufferedWriter( new OutputStreamWriter(sock.getOutputStream(),"UTF8"));
-		Boolean bool = true;
-		while (bool)
+		//String write = URLEncoder.encode(input,"UTF-8"); // www works with UTF-8
+		
+		wr.write(args[0]+" " + path + " HTTP/1.1\r\n");
+		wr.write("Host: " + host + "\r\n");
+		wr.write("Content-Type: text/html\r\n"); //application/x-www-form-urlencoded\r\n
+		wr.write("Content-Length: " + write.length() + "\r\n");
+		wr.write("Connection: Close\r\n");
+		wr.write("\r\n");
+		wr.write(write+"\r\n"); //TODO:newPOST Server needs a \r\n after message
+		wr.flush();
+		
+		BufferedReader br = new BufferedReader(new InputStreamReader(sock.getInputStream()));
+		String t;
+		
+		while(((t = br.readLine()) != null))
 		{
-			System.out.println("Enter something to upload in server: ");
-			/*
-			Scanner scanner = new Scanner(System.in);
-			String input = scanner.nextLine();
-			String write = URLEncoder.encode(input,"UTF-8"); // www works with UTF-8
-			*/
-			String write="Let's hope this works"; // TODO:newPOST change this to whatever message you want
-			wr.write("POST"+" " + path + " HTTP/1.1\r\n");
-			wr.write("Host: " + host + "\r\n");
-			wr.write("Content-Type: text/html\r\n"); //application/x-www-form-urlencoded\r\n
-			wr.write("Content-Length: " + write.length() + "\r\n");
-			wr.write("Connection: Close\r\n");
-			wr.write("\r\n");
-			wr.write(write+"\r\n"); //TODO:newPOST Server needs a \r\n after message
-			wr.flush();
-			
-			BufferedReader br = new BufferedReader(new InputStreamReader(sock.getInputStream()));
-			String t;
-			
-			while(((t = br.readLine()) != null))
-			{
-				System.out.println(t);
-			}
-			
-			br.close();
-			//scanner.close();
-			
-			//if (input.equals(""))
-				bool = false;
+			System.out.println(t);
 		}
+		
+		br.close();
+		scanner.close();
 		wr.close();
 		sock.close();
 		System.out.println("Done");
